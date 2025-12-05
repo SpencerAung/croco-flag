@@ -1,0 +1,18 @@
+{
+  "name": "@croco-flag/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CrocoFlag Lite SDK - TypeScript client library",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "echo 'SDK dev - to be implemented'",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.9.3"
+  }
+}
