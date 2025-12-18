@@ -21,6 +21,8 @@ export const operatorEnum = pgEnum('operator', [
   'in',
 ]);
 
+export const apiKeyTypeEnum = pgEnum('api_key_type', ['publishable', 'secret']);
+
 // Users Table
 export const users = pgTable(
   'users',
@@ -36,21 +38,38 @@ export const users = pgTable(
 );
 
 // Projects Table
-export const projects = pgTable(
-  'projects',
+export const projects = pgTable('projects', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  createdBy: uuid('created_by').references(() => users.id),
+  updatedBy: uuid('updated_by').references(() => users.id),
+});
+
+export const apiKeys = pgTable(
+  'api_keys',
   {
     id: uuid('id').defaultRandom().primaryKey(),
+    projectId: uuid('project_id')
+      .references(() => projects.id)
+      .notNull(),
     name: text('name').notNull(),
-    publishableKey: text('publishable_key').notNull().unique(),
-    secretKey: text('secret_key').notNull().unique(),
+    type: apiKeyTypeEnum('type').notNull(),
+    // Only store hash for verification - plaintext key shown once on creation
+    keyHash: text('key_hash').notNull(),
+    // First 12 chars for UI display (e.g., "sk_a1b2c3d4...")
+    keyPrefix: text('key_prefix').notNull(),
+    lastUsedAt: timestamp('last_used_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    revokedAt: timestamp('revoked_at'),
     createdBy: uuid('created_by').references(() => users.id),
-    updatedBy: uuid('updated_by').references(() => users.id),
+    revokedBy: uuid('revoked_by').references(() => users.id),
   },
   (table) => [
-    uniqueIndex('projects_pk_idx').on(table.publishableKey),
-    uniqueIndex('projects_sk_idx').on(table.secretKey),
+    index('api_keys_project_idx').on(table.projectId),
+    uniqueIndex('api_keys_hash_unique').on(table.keyHash),
   ],
 );
 
@@ -139,6 +158,14 @@ export const projectsRelations = relations(projects, ({ many, one }) => ({
     fields: [projects.updatedBy],
     references: [users.id],
     relationName: 'projectUpdator',
+  }),
+  apiKeys: many(apiKeys),
+}));
+
+export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
+  project: one(projects, {
+    fields: [apiKeys.projectId],
+    references: [projects.id],
   }),
 }));
 
