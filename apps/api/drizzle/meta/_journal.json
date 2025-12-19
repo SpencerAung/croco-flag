@@ -8,6 +8,13 @@
       "when": 1765856859262,
       "tag": "0000_medical_wilson_fisk",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1766119548791,
+      "tag": "0001_cold_bishop",
+      "breakpoints": true
     }
   ]
 }
