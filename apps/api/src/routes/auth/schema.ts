@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const tokenRequestSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   password: z.string().min(1),
 });
 
