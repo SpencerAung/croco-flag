@@ -6,12 +6,8 @@ import { eq } from 'drizzle-orm';
 import { zValidator } from '@hono/zod-validator';
 import { tokenRequestSchema } from './schema';
 import { config } from '../../config';
+import { sanitizeUser } from '../../utils/user';
 import bcrypt from 'bcryptjs';
-
-function sanitizeUser<T extends { passwordHash?: string }>(user: T) {
-  const { passwordHash, ...rest } = user;
-  return rest;
-}
 
 export function createAuthRouter(db: DbClient) {
   const authRouter = new Hono();
