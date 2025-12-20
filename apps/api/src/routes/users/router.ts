@@ -4,6 +4,7 @@ import { users } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 import { zValidator } from '@hono/zod-validator';
 import { createUserSchema, updateUserSchema } from './schema';
+import { config } from '../../config';
 import bcrypt from 'bcryptjs';
 
 // Omit passwordHash from response
@@ -33,7 +34,7 @@ export function createUsersRouter(db: DbClient) {
 
   usersRouter.post('/', zValidator('json', createUserSchema), async (c) => {
     const { password, ...rest } = c.req.valid('json');
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, config.bcryptRounds);
 
     const [user] = await db
       .insert(users)
@@ -49,7 +50,7 @@ export function createUsersRouter(db: DbClient) {
 
     const updateData: Record<string, unknown> = { ...rest };
     if (password) {
-      updateData.passwordHash = await bcrypt.hash(password, 10);
+      updateData.passwordHash = await bcrypt.hash(password, config.bcryptRounds);
     }
 
     const [user] = await db
