@@ -6,22 +6,26 @@ import { createUsersRouter } from './routes/users';
 import { createProjectKeysRouter } from './routes/project-keys';
 import { createSetupRouter } from './routes/setup';
 import { authMiddleware } from './middleware';
-import { db } from './db';
+import { DbClient } from './db';
 
-const app = new Hono();
+export const createApp = (db: DbClient) => {
+  const app = new Hono();
 
-// Public routes
-app.route('/auth', createAuthRouter(db));
-app.route('/setup', createSetupRouter(db));
+  // Public routes
+  app.route('/auth', createAuthRouter(db));
+  app.route('/setup', createSetupRouter(db));
 
-// Protected routes (require JWT token)
-app.use('/users/*', authMiddleware);
-app.use('/projects/*', authMiddleware);
-app.use('/flags/*', authMiddleware);
+  // Protected routes (require JWT token)
+  app.use('/users/*', authMiddleware);
+  app.use('/projects/*', authMiddleware);
+  app.use('/flags/*', authMiddleware);
 
-app.route('/users', createUsersRouter(db));
-app.route('/projects', createProjectsRouter(db));
-app.route('/projects/:projectId/keys', createProjectKeysRouter(db));
-app.route('/flags', createFlagsRouter(db));
+  app.route('/users', createUsersRouter(db));
+  app.route('/projects', createProjectsRouter(db));
+  app.route('/projects/:projectId/keys', createProjectKeysRouter(db));
+  app.route('/flags', createFlagsRouter(db));
 
-export default app;
+  return app;
+};
+
+export default createApp;
