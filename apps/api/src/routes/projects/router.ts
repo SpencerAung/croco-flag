@@ -1,9 +1,17 @@
 import { Hono } from 'hono';
+import { describeRoute, resolver, validator as zValidator } from 'hono-openapi';
 import type { DbClient } from '../../db';
 import { projects } from '../../db/schema';
 import { eq } from 'drizzle-orm';
-import { createProjectSchema, updateProjectSchema } from './schema';
-import { zValidator } from '@hono/zod-validator';
+import {
+  createProjectSchema,
+  updateProjectSchema,
+  projectIdParamSchema,
+  projectResponseSchema,
+  projectWithRelationsResponseSchema,
+  projectListResponseSchema,
+  errorResponseSchema,
+} from './schema';
 import type { AuthVariables } from '../../middleware/auth';
 import { sanitizeUser } from '../../utils/user';
 
@@ -20,35 +28,90 @@ function sanitizeProjectUsers<
 export function createProjectsRouter(db: DbClient) {
   const projectsRouter = new Hono<{ Variables: AuthVariables }>();
 
-  projectsRouter.get('/', async (c) => {
-    const allProjects = await db.query.projects.findMany({
-      with: {
-        creator: true,
-        updator: true,
+  projectsRouter.get(
+    '/',
+    describeRoute({
+      tags: ['Projects'],
+      summary: 'List all projects',
+      description: 'Returns all projects with creator and updator user relations',
+      security: [{ bearerAuth: [] }],
+      responses: {
+        200: {
+          description: 'List of projects',
+          content: {
+            'application/json': { schema: resolver(projectListResponseSchema) },
+          },
+        },
       },
-    });
-    return c.json({ data: allProjects.map(sanitizeProjectUsers) });
-  });
+    }),
+    async (c) => {
+      const allProjects = await db.query.projects.findMany({
+        with: {
+          creator: true,
+          updator: true,
+        },
+      });
+      return c.json({ data: allProjects.map(sanitizeProjectUsers) });
+    },
+  );
 
-  projectsRouter.get('/:id', async (c) => {
-    const id = c.req.param('id');
-    const project = await db.query.projects.findFirst({
-      where: eq(projects.id, id),
-      with: {
-        creator: true,
-        updator: true,
+  projectsRouter.get(
+    '/:id',
+    describeRoute({
+      tags: ['Projects'],
+      summary: 'Get a project by ID',
+      description: 'Returns a single project with creator and updator user relations',
+      security: [{ bearerAuth: [] }],
+      responses: {
+        200: {
+          description: 'Project found',
+          content: {
+            'application/json': { schema: resolver(projectWithRelationsResponseSchema) },
+          },
+        },
+        404: {
+          description: 'Project not found',
+          content: {
+            'application/json': { schema: resolver(errorResponseSchema) },
+          },
+        },
       },
-    });
+    }),
+    zValidator('param', projectIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid('param');
+      const project = await db.query.projects.findFirst({
+        where: eq(projects.id, id),
+        with: {
+          creator: true,
+          updator: true,
+        },
+      });
 
-    if (!project) {
-      return c.json({ error: 'Project not found' }, 404);
-    }
+      if (!project) {
+        return c.json({ error: 'Project not found' }, 404);
+      }
 
-    return c.json({ data: sanitizeProjectUsers(project) });
-  });
+      return c.json({ data: sanitizeProjectUsers(project) });
+    },
+  );
 
   projectsRouter.post(
     '/',
+    describeRoute({
+      tags: ['Projects'],
+      summary: 'Create a new project',
+      description: 'Creates a new project with the authenticated user as creator',
+      security: [{ bearerAuth: [] }],
+      responses: {
+        201: {
+          description: 'Project created',
+          content: {
+            'application/json': { schema: resolver(projectResponseSchema) },
+          },
+        },
+      },
+    }),
     zValidator('json', createProjectSchema),
     async (c) => {
       const body = c.req.valid('json');
@@ -69,9 +132,30 @@ export function createProjectsRouter(db: DbClient) {
 
   projectsRouter.put(
     '/:id',
+    describeRoute({
+      tags: ['Projects'],
+      summary: 'Update a project',
+      description: 'Updates an existing project',
+      security: [{ bearerAuth: [] }],
+      responses: {
+        200: {
+          description: 'Project updated',
+          content: {
+            'application/json': { schema: resolver(projectResponseSchema) },
+          },
+        },
+        404: {
+          description: 'Project not found',
+          content: {
+            'application/json': { schema: resolver(errorResponseSchema) },
+          },
+        },
+      },
+    }),
+    zValidator('param', projectIdParamSchema),
     zValidator('json', updateProjectSchema),
     async (c) => {
-      const id = c.req.param('id');
+      const { id } = c.req.valid('param');
       const body = c.req.valid('json');
       const userId = c.get('userId');
 
@@ -93,19 +177,43 @@ export function createProjectsRouter(db: DbClient) {
     },
   );
 
-  projectsRouter.delete('/:id', async (c) => {
-    const id = c.req.param('id');
-    const [project] = await db
-      .delete(projects)
-      .where(eq(projects.id, id))
-      .returning();
+  projectsRouter.delete(
+    '/:id',
+    describeRoute({
+      tags: ['Projects'],
+      summary: 'Delete a project',
+      description: 'Deletes a project by ID',
+      security: [{ bearerAuth: [] }],
+      responses: {
+        200: {
+          description: 'Project deleted',
+          content: {
+            'application/json': { schema: resolver(projectResponseSchema) },
+          },
+        },
+        404: {
+          description: 'Project not found',
+          content: {
+            'application/json': { schema: resolver(errorResponseSchema) },
+          },
+        },
+      },
+    }),
+    zValidator('param', projectIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid('param');
+      const [project] = await db
+        .delete(projects)
+        .where(eq(projects.id, id))
+        .returning();
 
-    if (!project) {
-      return c.json({ error: 'Project not found' }, 404);
-    }
+      if (!project) {
+        return c.json({ error: 'Project not found' }, 404);
+      }
 
-    return c.json({ data: project });
-  });
+      return c.json({ data: project });
+    },
+  );
 
   return projectsRouter;
 }

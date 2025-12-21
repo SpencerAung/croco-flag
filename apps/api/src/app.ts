@@ -1,4 +1,6 @@
 import { Hono } from 'hono';
+import { openAPIRouteHandler } from 'hono-openapi';
+import { swaggerUI } from '@hono/swagger-ui';
 import { createAuthRouter } from './routes/auth';
 import { createProjectsRouter } from './routes/projects';
 import { createUsersRouter } from './routes/users';
@@ -23,6 +25,32 @@ export const createApp = (db: DbClient) => {
   app.route('/projects', createProjectsRouter(db));
   app.route('/projects/:projectId/keys', createProjectKeysRouter(db));
   app.route('/projects/:projectId/flags', createProjectFlagsRouter(db));
+
+  // OpenAPI documentation
+  app.get(
+    '/openapi',
+    openAPIRouteHandler(app, {
+      documentation: {
+        info: {
+          title: 'CrocoFlag API',
+          version: '1.0.0',
+          description: 'Feature flag management API',
+        },
+        servers: [{ url: 'http://localhost:3000', description: 'Local server' }],
+        components: {
+          securitySchemes: {
+            bearerAuth: {
+              type: 'http',
+              scheme: 'bearer',
+              bearerFormat: 'JWT',
+            },
+          },
+        },
+      },
+    }),
+  );
+
+  app.get('/docs', swaggerUI({ url: '/openapi' }));
 
   return app;
 };
