@@ -1,1 +1,0 @@
-export { createFlagsRouter } from './router';

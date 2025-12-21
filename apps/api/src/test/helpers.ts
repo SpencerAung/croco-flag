@@ -35,20 +35,30 @@ export async function createAuthenticatedUser(
     password: 'password123',
   },
 ) {
-  await jsonRequest(app, '/setup/init', {
+  const setupRes = await jsonRequest(app, '/setup/init', {
     method: 'POST',
     body: user,
   });
+
+  if (setupRes.status !== 201) {
+    const error = await setupRes.json();
+    throw new Error(`Failed to create user via setup: ${JSON.stringify(error)}`);
+  }
 
   const tokenRes = await jsonRequest(app, '/auth/token', {
     method: 'POST',
     body: { email: user.email, password: user.password },
   });
 
-  const { data } = (await tokenRes.json()) as { data: { token: string } };
+  const tokenJson = (await tokenRes.json()) as { data?: { token: string }; error?: string };
+
+  if (tokenRes.status !== 200 || !tokenJson.data) {
+    throw new Error(`Failed to get auth token: ${JSON.stringify(tokenJson)}`);
+  }
+
   return {
     user,
-    token: data.token,
-    authHeader: { Authorization: `Bearer ${data.token}` },
+    token: tokenJson.data.token,
+    authHeader: { Authorization: `Bearer ${tokenJson.data.token}` },
   };
 }

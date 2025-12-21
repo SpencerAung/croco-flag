@@ -1,23 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createTestApp, jsonRequest } from '../../test/helpers';
 import { cleanDatabase } from '../../test/setup';
-
-interface SetupStatusResponse {
-  data: { initialized: boolean };
-}
-
-interface UserResponse {
-  data: {
-    id: string;
-    email: string;
-    name: string;
-    passwordHash?: string;
-  };
-}
-
-interface ErrorResponse {
-  error: string;
-}
+import type { ApiErrorResponse } from '../../types/common';
+import type { SetupStatusResponse, UserResponse } from './types';
 
 describe('Setup Router', () => {
   beforeEach(async () => {
@@ -74,7 +59,8 @@ describe('Setup Router', () => {
       const json = (await res.json()) as UserResponse;
       expect(json.data.email).toBe('admin@test.com');
       expect(json.data.name).toBe('Admin User');
-      expect(json.data.passwordHash).toBeUndefined();
+      // passwordHash is omitted from SanitizedUser type
+      expect('passwordHash' in json.data).toBe(false);
     });
 
     it('returns 403 when users already exist', async () => {
@@ -102,7 +88,7 @@ describe('Setup Router', () => {
 
       expect(res.status).toBe(403);
 
-      const json = (await res.json()) as ErrorResponse;
+      const json = (await res.json()) as ApiErrorResponse;
       expect(json.error).toBe('System already initialized');
     });
 
