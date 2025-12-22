@@ -14,9 +14,13 @@ import {
 } from './schema';
 import type { AuthVariables } from '../../middleware/auth';
 import { sanitizeUser } from '../../utils/user';
+import { flagListResponseSchema } from '../flags';
 
 function sanitizeProjectUsers<
-  T extends { creator?: { passwordHash?: string } | null; updator?: { passwordHash?: string } | null },
+  T extends {
+    creator?: { passwordHash?: string } | null;
+    updator?: { passwordHash?: string } | null;
+  },
 >(project: T) {
   return {
     ...project,
@@ -33,7 +37,8 @@ export function createProjectsRouter(db: DbClient) {
     describeRoute({
       tags: ['Projects'],
       summary: 'List all projects',
-      description: 'Returns all projects with creator and updator user relations',
+      description:
+        'Returns all projects with creator and updator user relations',
       security: [{ bearerAuth: [] }],
       responses: {
         200: {
@@ -60,13 +65,16 @@ export function createProjectsRouter(db: DbClient) {
     describeRoute({
       tags: ['Projects'],
       summary: 'Get a project by ID',
-      description: 'Returns a single project with creator and updator user relations',
+      description:
+        'Returns a single project with creator and updator user relations',
       security: [{ bearerAuth: [] }],
       responses: {
         200: {
           description: 'Project found',
           content: {
-            'application/json': { schema: resolver(projectWithRelationsResponseSchema) },
+            'application/json': {
+              schema: resolver(projectWithRelationsResponseSchema),
+            },
           },
         },
         404: {
@@ -101,7 +109,8 @@ export function createProjectsRouter(db: DbClient) {
     describeRoute({
       tags: ['Projects'],
       summary: 'Create a new project',
-      description: 'Creates a new project with the authenticated user as creator',
+      description:
+        'Creates a new project with the authenticated user as creator',
       security: [{ bearerAuth: [] }],
       responses: {
         201: {
@@ -212,6 +221,33 @@ export function createProjectsRouter(db: DbClient) {
       }
 
       return c.json({ data: project });
+    },
+  );
+
+  projectsRouter.get(
+    '/:id/flags',
+    describeRoute({
+      tags: ['Projects'],
+      summary: 'Get project flags',
+      description: 'Get the flags created ina a project',
+      security: [{ bearerAuth: [] }],
+      responses: {
+        200: {
+          description: 'Project flags',
+          content: {
+            'application/json': { schema: resolver(flagListResponseSchema) },
+          },
+        },
+      },
+    }),
+    zValidator('param', projectIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid('param');
+
+      const flags = db.query.flags.findMany({
+        where: eq(projects.id, id),
+      });
+      return c.json({ data: flags });
     },
   );
 

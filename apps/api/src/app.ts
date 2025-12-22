@@ -5,10 +5,10 @@ import { createAuthRouter } from './routes/auth';
 import { createProjectsRouter } from './routes/projects';
 import { createUsersRouter } from './routes/users';
 import { createProjectKeysRouter } from './routes/project-keys';
-import { createProjectFlagsRouter } from './routes/project-flags';
 import { createSetupRouter } from './routes/setup';
 import { authMiddleware } from './middleware';
 import { DbClient } from './db';
+import { createFlagsRouter } from './routes/flags';
 
 export const createApp = (db: DbClient) => {
   const app = new Hono();
@@ -20,11 +20,12 @@ export const createApp = (db: DbClient) => {
   // Protected routes (require JWT token)
   app.use('/users/*', authMiddleware);
   app.use('/projects/*', authMiddleware);
+  app.use('/flags/*', authMiddleware);
 
   app.route('/users', createUsersRouter(db));
   app.route('/projects', createProjectsRouter(db));
+  app.route('/flags', createFlagsRouter(db));
   app.route('/projects/:projectId/keys', createProjectKeysRouter(db));
-  app.route('/projects/:projectId/flags', createProjectFlagsRouter(db));
 
   // OpenAPI documentation
   app.get(
@@ -36,7 +37,9 @@ export const createApp = (db: DbClient) => {
           version: '1.0.0',
           description: 'Feature flag management API',
         },
-        servers: [{ url: 'http://localhost:3000', description: 'Local server' }],
+        servers: [
+          { url: 'http://localhost:3000', description: 'Local server' },
+        ],
         components: {
           securitySchemes: {
             bearerAuth: {

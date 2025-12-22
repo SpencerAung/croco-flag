@@ -6,8 +6,13 @@ import { users } from '../../db/schema';
 const insertUserSchema = createInsertSchema(users, {
   email: z.email(),
   name: z.string().min(1).max(100),
+  updatedAt: z.iso.datetime(),
+  createdAt: z.iso.datetime(),
 });
-const selectUserSchema = createSelectSchema(users);
+const selectUserSchema = createSelectSchema(users, {
+  updatedAt: z.iso.datetime(),
+  createdAt: z.iso.datetime(),
+});
 
 // Request schemas
 export const initSetupSchema = insertUserSchema

@@ -6,8 +6,13 @@ import { sanitizedUserSchema } from '../setup/schema';
 // Base schemas derived from DB with custom validations
 const insertProjectSchema = createInsertSchema(projects, {
   name: z.string().min(1),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
 });
-const selectProjectSchema = createSelectSchema(projects);
+const selectProjectSchema = createSelectSchema(projects, {
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+});
 
 // Request schemas
 export const createProjectSchema = insertProjectSchema
@@ -19,9 +24,7 @@ export const createProjectSchema = insertProjectSchema
 export const updateProjectSchema = insertProjectSchema
   .pick({ name: true, description: true })
   .meta({
-    examples: [
-      { name: 'Updated Project', description: 'Updated description' },
-    ],
+    examples: [{ name: 'Updated Project', description: 'Updated description' }],
   });
 
 export const projectIdParamSchema = z.object({
