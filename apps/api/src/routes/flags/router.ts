@@ -41,6 +41,7 @@ export function createFlagsRouter(db: DbClient) {
         .values({
           ...body,
           createdBy: userId,
+          updatedBy: userId,
         })
         .returning();
 

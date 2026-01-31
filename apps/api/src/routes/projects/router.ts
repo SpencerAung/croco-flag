@@ -229,7 +229,7 @@ export function createProjectsRouter(db: DbClient) {
     describeRoute({
       tags: ['Projects'],
       summary: 'Get project flags',
-      description: 'Get the flags created ina a project',
+      description: 'Get the flags created in a project',
       security: [{ bearerAuth: [] }],
       responses: {
         200: {

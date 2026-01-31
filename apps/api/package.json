@@ -17,7 +17,8 @@
     "docker:up": "docker compose -f ../../compose.yaml --env-file .env up -d",
     "docker:down": "docker compose -f ../../compose.yaml --env-file .env down",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "generate:types": "tsx ./src/scripts/export-openapi.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",
