@@ -4,7 +4,6 @@ import { swaggerUI } from '@hono/swagger-ui';
 import { createAuthRouter } from './routes/auth';
 import { createProjectsRouter } from './routes/projects';
 import { createUsersRouter } from './routes/users';
-import { createProjectKeysRouter } from './routes/project-keys';
 import { createSetupRouter } from './routes/setup';
 import { authMiddleware } from './middleware';
 import { DbClient } from './db';
@@ -25,7 +24,6 @@ export const createApp = (db: DbClient) => {
   app.route('/users', createUsersRouter(db));
   app.route('/projects', createProjectsRouter(db));
   app.route('/flags', createFlagsRouter(db));
-  app.route('/projects/:projectId/keys', createProjectKeysRouter(db));
 
   // OpenAPI documentation
   app.get(

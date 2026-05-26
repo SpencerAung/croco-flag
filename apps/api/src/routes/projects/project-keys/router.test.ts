@@ -3,9 +3,9 @@ import {
   createTestApp,
   jsonRequest,
   createAuthenticatedUser,
-} from '../../test/helpers';
-import { cleanDatabase } from '../../test/setup';
-import type { ProjectResponse } from '../projects/types';
+} from '../../../test/helpers';
+import { cleanDatabase } from '../../../test/setup';
+import type { ProjectResponse } from '../types';
 
 interface ProjectKey {
   id: string;
@@ -52,10 +52,9 @@ describe('Project Keys Router', () => {
         headers: authHeader,
       });
 
-      const res = await app.request(
-        `/projects/${projectA.data.id}/keys`,
-        { headers: authHeader },
-      );
+      const res = await app.request(`/projects/${projectA.data.id}/keys`, {
+        headers: authHeader,
+      });
       const json = (await res.json()) as ProjectKeyListResponse;
 
       expect(res.status).toBe(200);

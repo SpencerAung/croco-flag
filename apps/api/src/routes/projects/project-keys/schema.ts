@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { apiKeyTypeEnum } from '../../db/schema';
+import { apiKeyTypeEnum } from '../../../db/schema';
 
 export const createProjectKeySchema = z.object({
   name: z.string().min(1),

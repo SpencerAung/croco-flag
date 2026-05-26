@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { DbClient } from '../../db';
-import { apiKeys } from '../../db/schema';
+import { DbClient } from '../../../db';
+import { apiKeys } from '../../../db/schema';
 import { zValidator } from '@hono/zod-validator';
 import { createProjectKeySchema } from './schema';
 import { generateApiKey } from './utils';

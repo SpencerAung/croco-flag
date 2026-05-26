@@ -15,6 +15,7 @@ import {
 import type { AuthVariables } from '../../middleware/auth';
 import { sanitizeUser } from '../../utils/user';
 import { flagListResponseSchema } from '../flags';
+import { createProjectKeysRouter } from './project-keys';
 
 function sanitizeProjectUsers<
   T extends {
@@ -250,6 +251,8 @@ export function createProjectsRouter(db: DbClient) {
       return c.json({ data: flags });
     },
   );
+
+  projectsRouter.route('/:projectId/keys', createProjectKeysRouter(db));
 
   return projectsRouter;
 }
