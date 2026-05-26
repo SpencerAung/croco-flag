@@ -10,7 +10,13 @@ export function createProjectKeysRouter(db: DbClient) {
   const projectKeysRouter = new Hono();
 
   projectKeysRouter.get('/', async (c) => {
-    const projectKeys = await db.query.apiKeys.findMany();
+    const projectId = c.req.param('projectId');
+    if (!projectId) {
+      return c.json({ error: 'Project ID is required' }, 400);
+    }
+    const projectKeys = await db.query.apiKeys.findMany({
+      where: eq(apiKeys.projectId, projectId),
+    });
     return c.json({ data: projectKeys });
   });
 
