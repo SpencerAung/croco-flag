@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { describeRoute, resolver, validator as zValidator } from 'hono-openapi';
 import type { DbClient } from '../../db';
-import { projects } from '../../db/schema';
+import { apiKeys, projects } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 import {
   createProjectSchema,
@@ -15,7 +15,7 @@ import {
 import type { AuthVariables } from '../../middleware/auth';
 import { sanitizeUser } from '../../utils/user';
 import { flagListResponseSchema } from '../flags';
-import { createProjectKeysRouter } from './project-keys';
+import { projectKeyListResponseSchema } from '../project-keys';
 
 function sanitizeProjectUsers<
   T extends {
@@ -252,7 +252,36 @@ export function createProjectsRouter(db: DbClient) {
     },
   );
 
-  projectsRouter.route('/:projectId/keys', createProjectKeysRouter(db));
+  projectsRouter.get(
+    '/:id/keys',
+    describeRoute({
+      tags: ['Projects'],
+      summary: 'Get project API keys',
+      description: 'List the API keys belonging to a project',
+      security: [{ bearerAuth: [] }],
+      responses: {
+        200: {
+          description: 'Project API keys',
+          content: {
+            'application/json': {
+              schema: resolver(projectKeyListResponseSchema),
+            },
+          },
+        },
+      },
+    }),
+    zValidator('param', projectIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid('param');
+
+      const keys = await db.query.apiKeys.findMany({
+        where: eq(apiKeys.projectId, id),
+      });
+      return c.json({
+        data: keys.map(({ keyHash: _omitted, ...rest }) => rest),
+      });
+    },
+  );
 
   return projectsRouter;
 }

@@ -3,9 +3,9 @@ import {
   createTestApp,
   jsonRequest,
   createAuthenticatedUser,
-} from '../../../test/helpers';
-import { cleanDatabase } from '../../../test/setup';
-import type { ProjectResponse } from '../types';
+} from '../../test/helpers';
+import { cleanDatabase } from '../../test/setup';
+import type { ProjectResponse } from '../projects/types';
 
 interface ProjectKey {
   id: string;
@@ -41,14 +41,14 @@ describe('Project Keys Router', () => {
       });
       const projectB = (await projectBRes.json()) as ProjectResponse;
 
-      await jsonRequest(app, `/projects/${projectA.data.id}/keys`, {
+      await jsonRequest(app, '/keys', {
         method: 'POST',
-        body: { name: 'A key', type: 'secret' },
+        body: { name: 'A key', type: 'secret', projectId: projectA.data.id },
         headers: authHeader,
       });
-      await jsonRequest(app, `/projects/${projectB.data.id}/keys`, {
+      await jsonRequest(app, '/keys', {
         method: 'POST',
-        body: { name: 'B key', type: 'secret' },
+        body: { name: 'B key', type: 'secret', projectId: projectB.data.id },
         headers: authHeader,
       });
 
