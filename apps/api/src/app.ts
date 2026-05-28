@@ -11,21 +11,24 @@ import { DbClient } from './db';
 import { createFlagsRouter } from './routes/flags';
 
 export const createApp = (db: DbClient) => {
-  const app = new Hono()
-    // Public routes
-    .route('/auth', createAuthRouter(db))
-    .route('/setup', createSetupRouter(db))
-    // Protected routes (require JWT token)
-    .use('/users/*', authMiddleware)
-    .use('/projects/*', authMiddleware)
-    .use('/flags/*', authMiddleware)
-    .use('/keys/*', authMiddleware)
-    .route('/users', createUsersRouter(db))
-    .route('/projects', createProjectsRouter(db))
-    .route('/flags', createFlagsRouter(db))
-    .route('/keys', createApiKeysRouter(db));
+  const app = new Hono();
 
-  // OpenAPI documentation (not chained — not needed in AppType)
+  // Public routes
+  app.route('/auth', createAuthRouter(db));
+  app.route('/setup', createSetupRouter(db));
+
+  // Protected routes (require JWT token)
+  app.use('/users/*', authMiddleware);
+  app.use('/projects/*', authMiddleware);
+  app.use('/flags/*', authMiddleware);
+  app.use('/keys/*', authMiddleware);
+
+  app.route('/users', createUsersRouter(db));
+  app.route('/projects', createProjectsRouter(db));
+  app.route('/flags', createFlagsRouter(db));
+  app.route('/keys', createApiKeysRouter(db));
+
+  // OpenAPI documentation
   app.get(
     '/openapi',
     openAPIRouteHandler(app, {
