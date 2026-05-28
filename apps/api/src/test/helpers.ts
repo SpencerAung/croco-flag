@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import type { Hono } from 'hono';
 import { testDb } from './db';
 import createApp from '../app';
 
@@ -6,8 +6,20 @@ export function createTestApp() {
   return createApp(testDb);
 }
 
+// Accept any Hono shape so the typed AppType from createApp flows through.
+type AnyHono = Hono<any, any, any>;
+
+export function assertStatus<R extends { status: number }, S extends number>(
+  res: R,
+  status: S,
+): asserts res is R & { status: S } {
+  if (res.status !== status) {
+    throw new Error(`expected status ${status}, got ${res.status}`);
+  }
+}
+
 export async function jsonRequest(
-  app: Hono,
+  app: AnyHono,
   path: string,
   options: {
     method?: string;
@@ -28,7 +40,7 @@ export async function jsonRequest(
 }
 
 export async function createAuthenticatedUser(
-  app: Hono,
+  app: AnyHono,
   user: { email: string; name: string; password: string } = {
     email: 'test@example.com',
     name: 'Test User',

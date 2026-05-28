@@ -4,31 +4,28 @@ import { swaggerUI } from '@hono/swagger-ui';
 import { createAuthRouter } from './routes/auth';
 import { createProjectsRouter } from './routes/projects';
 import { createUsersRouter } from './routes/users';
-import { createProjectKeysRouter } from './routes/project-keys';
+import { createApiKeysRouter } from './routes/api-keys';
 import { createSetupRouter } from './routes/setup';
 import { authMiddleware } from './middleware';
 import { DbClient } from './db';
 import { createFlagsRouter } from './routes/flags';
 
 export const createApp = (db: DbClient) => {
-  const app = new Hono();
+  const app = new Hono()
+    // Public routes
+    .route('/auth', createAuthRouter(db))
+    .route('/setup', createSetupRouter(db))
+    // Protected routes (require JWT token)
+    .use('/users/*', authMiddleware)
+    .use('/projects/*', authMiddleware)
+    .use('/flags/*', authMiddleware)
+    .use('/keys/*', authMiddleware)
+    .route('/users', createUsersRouter(db))
+    .route('/projects', createProjectsRouter(db))
+    .route('/flags', createFlagsRouter(db))
+    .route('/keys', createApiKeysRouter(db));
 
-  // Public routes
-  app.route('/auth', createAuthRouter(db));
-  app.route('/setup', createSetupRouter(db));
-
-  // Protected routes (require JWT token)
-  app.use('/users/*', authMiddleware);
-  app.use('/projects/*', authMiddleware);
-  app.use('/flags/*', authMiddleware);
-  app.use('/keys/*', authMiddleware);
-
-  app.route('/users', createUsersRouter(db));
-  app.route('/projects', createProjectsRouter(db));
-  app.route('/flags', createFlagsRouter(db));
-  app.route('/keys', createProjectKeysRouter(db));
-
-  // OpenAPI documentation
+  // OpenAPI documentation (not chained — not needed in AppType)
   app.get(
     '/openapi',
     openAPIRouteHandler(app, {
@@ -58,5 +55,7 @@ export const createApp = (db: DbClient) => {
 
   return app;
 };
+
+export type AppType = ReturnType<typeof createApp>;
 
 export default createApp;

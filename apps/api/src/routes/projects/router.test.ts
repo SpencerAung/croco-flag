@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createTestApp, jsonRequest, createAuthenticatedUser } from '../../test/helpers';
+import { testClient } from 'hono/testing';
+import {
+  assertStatus,
+  createAuthenticatedUser,
+  createTestApp,
+} from '../../test/helpers';
 import { cleanDatabase } from '../../test/setup';
-import type {
-  ProjectResponse,
-  ProjectWithRelationsResponse,
-  ProjectListResponse,
-} from './types';
 
 describe('Projects Router', () => {
   beforeEach(async () => {
@@ -14,40 +14,40 @@ describe('Projects Router', () => {
 
   describe('GET /projects', () => {
     it('requires authentication', async () => {
-      const app = createTestApp();
+      const client = testClient(createTestApp());
 
-      const res = await app.request('/projects');
+      const res = await client.projects.$get();
 
-      expect(res.status).toBe(401);
+      assertStatus(res, 401);
     });
 
     it('returns empty array when no projects exist', async () => {
       const app = createTestApp();
       const { authHeader } = await createAuthenticatedUser(app);
+      const client = testClient(app);
 
-      const res = await app.request('/projects', { headers: authHeader });
-      const json = (await res.json()) as ProjectListResponse;
+      const res = await client.projects.$get({}, { headers: authHeader });
+      assertStatus(res, 200);
+      const json = await res.json();
 
-      expect(res.status).toBe(200);
       expect(json.data).toEqual([]);
     });
 
     it('returns projects with user relations', async () => {
       const app = createTestApp();
       const { authHeader } = await createAuthenticatedUser(app);
+      const client = testClient(app);
 
-      // Create a project first
-      const createRes = await jsonRequest(app, '/projects', {
-        method: 'POST',
-        body: { name: 'Test Project', description: 'A test project' },
-        headers: authHeader,
-      });
-      expect(createRes.status).toBe(201);
+      const createRes = await client.projects.$post(
+        { json: { name: 'Test Project', description: 'A test project' } },
+        { headers: authHeader },
+      );
+      assertStatus(createRes, 201);
 
-      const res = await app.request('/projects', { headers: authHeader });
-      const json = (await res.json()) as ProjectListResponse;
+      const res = await client.projects.$get({}, { headers: authHeader });
+      assertStatus(res, 200);
+      const json = await res.json();
 
-      expect(res.status).toBe(200);
       expect(json.data).toHaveLength(1);
       expect(json.data[0].name).toBe('Test Project');
       expect(json.data[0].creator).toBeDefined();
@@ -59,42 +59,47 @@ describe('Projects Router', () => {
 
   describe('GET /projects/:id', () => {
     it('requires authentication', async () => {
-      const app = createTestApp();
+      const client = testClient(createTestApp());
 
-      const res = await app.request('/projects/some-id');
+      const res = await client.projects[':id'].$get({
+        param: { id: 'some-id' },
+      });
 
-      expect(res.status).toBe(401);
+      assertStatus(res, 401);
     });
 
     it('returns 404 for non-existent project', async () => {
       const app = createTestApp();
       const { authHeader } = await createAuthenticatedUser(app);
+      const client = testClient(app);
 
-      const res = await app.request('/projects/00000000-0000-0000-0000-000000000000', {
-        headers: authHeader,
-      });
+      const res = await client.projects[':id'].$get(
+        { param: { id: '00000000-0000-0000-0000-000000000000' } },
+        { headers: authHeader },
+      );
 
-      expect(res.status).toBe(404);
+      assertStatus(res, 404);
     });
 
     it('returns project with user relations', async () => {
       const app = createTestApp();
       const { authHeader } = await createAuthenticatedUser(app);
+      const client = testClient(app);
 
-      // Create a project
-      const createRes = await jsonRequest(app, '/projects', {
-        method: 'POST',
-        body: { name: 'Test Project' },
-        headers: authHeader,
-      });
-      const created = (await createRes.json()) as ProjectResponse;
+      const createRes = await client.projects.$post(
+        { json: { name: 'Test Project' } },
+        { headers: authHeader },
+      );
+      assertStatus(createRes, 201);
+      const created = await createRes.json();
 
-      const res = await app.request(`/projects/${created.data.id}`, {
-        headers: authHeader,
-      });
-      const json = (await res.json()) as ProjectWithRelationsResponse;
+      const res = await client.projects[':id'].$get(
+        { param: { id: created.data.id } },
+        { headers: authHeader },
+      );
+      assertStatus(res, 200);
+      const json = await res.json();
 
-      expect(res.status).toBe(200);
       expect(json.data.name).toBe('Test Project');
       expect(json.data.creator?.email).toBe('test@example.com');
     });
@@ -102,29 +107,27 @@ describe('Projects Router', () => {
 
   describe('POST /projects', () => {
     it('requires authentication', async () => {
-      const app = createTestApp();
+      const client = testClient(createTestApp());
 
-      const res = await jsonRequest(app, '/projects', {
-        method: 'POST',
-        body: { name: 'Test Project' },
+      const res = await client.projects.$post({
+        json: { name: 'Test Project' },
       });
 
-      expect(res.status).toBe(401);
+      assertStatus(res, 401);
     });
 
     it('creates a project with createdBy set', async () => {
       const app = createTestApp();
       const { authHeader } = await createAuthenticatedUser(app);
+      const client = testClient(app);
 
-      const res = await jsonRequest(app, '/projects', {
-        method: 'POST',
-        body: { name: 'New Project', description: 'A new project' },
-        headers: authHeader,
-      });
+      const res = await client.projects.$post(
+        { json: { name: 'New Project', description: 'A new project' } },
+        { headers: authHeader },
+      );
+      assertStatus(res, 201);
+      const json = await res.json();
 
-      expect(res.status).toBe(201);
-
-      const json = (await res.json()) as ProjectResponse;
       expect(json.data.name).toBe('New Project');
       expect(json.data.description).toBe('A new project');
       expect(json.data.createdBy).toBeDefined();
@@ -133,64 +136,65 @@ describe('Projects Router', () => {
     it('validates required fields', async () => {
       const app = createTestApp();
       const { authHeader } = await createAuthenticatedUser(app);
+      const client = testClient(app);
 
-      const res = await jsonRequest(app, '/projects', {
-        method: 'POST',
-        body: {},
-        headers: authHeader,
-      });
+      const res = await client.projects.$post(
+        // @ts-expect-error — intentionally missing required `name` to test validator
+        { json: {} },
+        { headers: authHeader },
+      );
 
-      expect(res.status).toBe(400);
+      assertStatus(res, 400);
     });
 
     it('validates name is not empty', async () => {
       const app = createTestApp();
       const { authHeader } = await createAuthenticatedUser(app);
+      const client = testClient(app);
 
-      const res = await jsonRequest(app, '/projects', {
-        method: 'POST',
-        body: { name: '' },
-        headers: authHeader,
-      });
+      const res = await client.projects.$post(
+        { json: { name: '' } },
+        { headers: authHeader },
+      );
 
-      expect(res.status).toBe(400);
+      assertStatus(res, 400);
     });
   });
 
   describe('PUT /projects/:id', () => {
     it('requires authentication', async () => {
-      const app = createTestApp();
+      const client = testClient(createTestApp());
 
-      const res = await jsonRequest(app, '/projects/some-id', {
-        method: 'PUT',
-        body: { name: 'Updated' },
+      const res = await client.projects[':id'].$put({
+        param: { id: 'some-id' },
+        json: { name: 'Updated' },
       });
 
-      expect(res.status).toBe(401);
+      assertStatus(res, 401);
     });
 
     it('updates project and sets updatedBy', async () => {
       const app = createTestApp();
       const { authHeader } = await createAuthenticatedUser(app);
+      const client = testClient(app);
 
-      // Create a project
-      const createRes = await jsonRequest(app, '/projects', {
-        method: 'POST',
-        body: { name: 'Original Name' },
-        headers: authHeader,
-      });
-      const created = (await createRes.json()) as ProjectResponse;
+      const createRes = await client.projects.$post(
+        { json: { name: 'Original Name' } },
+        { headers: authHeader },
+      );
+      assertStatus(createRes, 201);
+      const created = await createRes.json();
 
-      // Update the project
-      const res = await jsonRequest(app, `/projects/${created.data.id}`, {
-        method: 'PUT',
-        body: { name: 'Updated Name', description: 'New description' },
-        headers: authHeader,
-      });
+      const res = await client.projects[':id'].$put(
+        {
+          param: { id: created.data.id },
+          json: { name: 'Updated Name', description: 'New description' },
+        },
+        { headers: authHeader },
+      );
+      assertStatus(res, 200);
+      const json = await res.json();
 
-      expect(res.status).toBe(200);
-
-      const json = (await res.json()) as ProjectResponse;
       expect(json.data.name).toBe('Updated Name');
       expect(json.data.description).toBe('New description');
     });
@@ -198,64 +202,127 @@ describe('Projects Router', () => {
     it('returns 404 for non-existent project', async () => {
       const app = createTestApp();
       const { authHeader } = await createAuthenticatedUser(app);
+      const client = testClient(app);
 
-      const res = await jsonRequest(app, '/projects/00000000-0000-0000-0000-000000000000', {
-        method: 'PUT',
-        body: { name: 'Updated' },
-        headers: authHeader,
-      });
+      const res = await client.projects[':id'].$put(
+        {
+          param: { id: '00000000-0000-0000-0000-000000000000' },
+          json: { name: 'Updated' },
+        },
+        { headers: authHeader },
+      );
 
-      expect(res.status).toBe(404);
+      assertStatus(res, 404);
     });
   });
 
   describe('DELETE /projects/:id', () => {
     it('requires authentication', async () => {
-      const app = createTestApp();
+      const client = testClient(createTestApp());
 
-      const res = await app.request('/projects/some-id', { method: 'DELETE' });
+      const res = await client.projects[':id'].$delete({
+        param: { id: 'some-id' },
+      });
 
-      expect(res.status).toBe(401);
+      assertStatus(res, 401);
     });
 
     it('deletes a project', async () => {
       const app = createTestApp();
       const { authHeader } = await createAuthenticatedUser(app);
+      const client = testClient(app);
 
-      // Create a project
-      const createRes = await jsonRequest(app, '/projects', {
-        method: 'POST',
-        body: { name: 'To Delete' },
-        headers: authHeader,
-      });
-      const created = (await createRes.json()) as ProjectResponse;
+      const createRes = await client.projects.$post(
+        { json: { name: 'To Delete' } },
+        { headers: authHeader },
+      );
+      assertStatus(createRes, 201);
+      const created = await createRes.json();
 
-      // Delete the project
-      const res = await app.request(`/projects/${created.data.id}`, {
-        method: 'DELETE',
-        headers: authHeader,
-      });
+      const res = await client.projects[':id'].$delete(
+        { param: { id: created.data.id } },
+        { headers: authHeader },
+      );
+      assertStatus(res, 200);
 
-      expect(res.status).toBe(200);
-
-      // Verify it's deleted
-      const getRes = await app.request(`/projects/${created.data.id}`, {
-        headers: authHeader,
-      });
-
-      expect(getRes.status).toBe(404);
+      const getRes = await client.projects[':id'].$get(
+        { param: { id: created.data.id } },
+        { headers: authHeader },
+      );
+      assertStatus(getRes, 404);
     });
 
     it('returns 404 for non-existent project', async () => {
       const app = createTestApp();
       const { authHeader } = await createAuthenticatedUser(app);
+      const client = testClient(app);
 
-      const res = await app.request('/projects/00000000-0000-0000-0000-000000000000', {
-        method: 'DELETE',
-        headers: authHeader,
+      const res = await client.projects[':id'].$delete(
+        { param: { id: '00000000-0000-0000-0000-000000000000' } },
+        { headers: authHeader },
+      );
+
+      assertStatus(res, 404);
+    });
+  });
+
+  describe('Project Keys Router', () => {
+    beforeEach(async () => {
+      await cleanDatabase();
+    });
+
+    describe('GET /projects/:projectId/keys', () => {
+      it('returns only keys belonging to the requested project', async () => {
+        const app = createTestApp();
+        const { authHeader } = await createAuthenticatedUser(app);
+        const client = testClient(app);
+
+        const projectARes = await client.projects.$post(
+          { json: { name: 'Project A' } },
+          { headers: authHeader },
+        );
+        assertStatus(projectARes, 201);
+        const projectA = await projectARes.json();
+
+        const projectBRes = await client.projects.$post(
+          { json: { name: 'Project B' } },
+          { headers: authHeader },
+        );
+        assertStatus(projectBRes, 201);
+        const projectB = await projectBRes.json();
+
+        await client.keys.$post(
+          {
+            json: {
+              name: 'A key',
+              type: 'secret',
+              projectId: projectA.data.id,
+            },
+          },
+          { headers: authHeader },
+        );
+        await client.keys.$post(
+          {
+            json: {
+              name: 'B key',
+              type: 'secret',
+              projectId: projectB.data.id,
+            },
+          },
+          { headers: authHeader },
+        );
+
+        const res = await client.projects[':id'].keys.$get(
+          { param: { id: projectA.data.id } },
+          { headers: authHeader },
+        );
+        assertStatus(res, 200);
+        const json = await res.json();
+
+        expect(json.data).toHaveLength(1);
+        expect(json.data[0].projectId).toBe(projectA.data.id);
+        expect(json.data[0].name).toBe('A key');
       });
-
-      expect(res.status).toBe(404);
     });
   });
 });
