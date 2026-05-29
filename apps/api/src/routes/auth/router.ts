@@ -109,7 +109,7 @@ export function createAuthRouter(db: DbClient) {
         });
 
         if (!user) {
-          return c.json({ error: 'Unauthorized' }, 404);
+          return c.json({ error: 'Unauthorized' }, 401);
         }
 
         return c.json({ data: sanitizeUser(user) });

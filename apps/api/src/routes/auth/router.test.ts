@@ -121,5 +121,17 @@ describe('Auth Router', () => {
       expect(json.data.name).toBe('Test User');
       expect('passwordHash' in json.data).toBe(false);
     });
+
+    it('returns 401 when the token is valid but the user no longer exists', async () => {
+      const app = createTestApp();
+      const { authHeader } = await createAuthenticatedUser(app);
+
+      // Wipe the user the token was issued for; the JWT itself is still valid.
+      await cleanDatabase();
+
+      const res = await jsonRequest(app, '/auth/me', { headers: authHeader });
+
+      expect(res.status).toBe(401);
+    });
   });
 });
